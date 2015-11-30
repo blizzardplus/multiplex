@@ -397,7 +397,7 @@ void parse_args(int argc, char *argv[]) {
     if(argc == 2)
         max_clients = atoi(argv[1]);
 }
-
+/*
 int main(int argc, char *argv[]) {
     struct sockaddr_in echoclient;
     int listen_sock = create_listen_socket(echoclient);
@@ -422,4 +422,4 @@ int main(int argc, char *argv[]) {
             spawn_thread(&thread, (void*)clientsock);
         }
     }
-}
+}*/
