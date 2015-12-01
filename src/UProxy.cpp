@@ -55,7 +55,7 @@ void Proxy::handleSocksRequest(boost::shared_ptr<SocksStream> connection,
                       */
   }
 }
-/*
+
 void Proxy::handleStreamOpen(boost::shared_ptr<SocksStream> socks,
                              boost::shared_ptr<Packetizer> stream,
                              const boost::system::error_code &err)
@@ -74,5 +74,3 @@ void Proxy::handleStreamOpen(boost::shared_ptr<SocksStream> socks,
   //stream->run();
   proxyShuffler->shuffle();
 }
-
-*/

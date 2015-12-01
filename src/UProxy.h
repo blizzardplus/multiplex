@@ -14,9 +14,9 @@
 
 #include "TunnelStream.h"
 #include "SocksStream.h"
-//#include "Packetizer.h"
+#include "Packetizer.h"
 //#include "UDPRelay.h"
-//#include "ProxyShuffler.h"
+#include "ProxyShuffler.h"
 //#include "Morpher.h"
 //#include "Crypto.h"
 #include "Util.h"
@@ -41,10 +41,10 @@ class Proxy {
                           uint16_t port,
                           const boost::system::error_code &err);
 
-  /*void handleStreamOpen(boost::shared_ptr<SocksStream> socks,
+  void handleStreamOpen(boost::shared_ptr<SocksStream> socks,
                         boost::shared_ptr<Packetizer> stream,
                         const boost::system::error_code &err);
-                        */
+
 
  public:
   Proxy(/*UDPRelay *relay, */ boost::asio::io_service &io_service,
