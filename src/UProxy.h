@@ -15,7 +15,6 @@
 #include "TunnelStream.h"
 #include "SocksStream.h"
 #include "Packetizer.h"
-//#include "UDPRelay.h"
 #include "ProxyShuffler.h"
 //#include "Morpher.h"
 //#include "Crypto.h"
@@ -28,7 +27,6 @@ using namespace boost::asio;
 class Proxy {
  public:
   ip::tcp::acceptor acceptor;
-  //UDPRelay * relay;
   //Morpher  * _morpher;
   //SkypeClient * skypeclient;
 

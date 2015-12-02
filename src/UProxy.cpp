@@ -49,10 +49,11 @@ void Proxy::handleSocksRequest(boost::shared_ptr<SocksStream> connection,
 
     std::cerr << "[proxy] " << "Skype server at " << host << ":" << port << std::endl; 
 
-    /*relay->openStream(boost::bind(&Proxy::handleStreamOpen,
-                                  this, connection, _1, _2), 
-                      codec, _morpher);
-                      */
+    //boost::bind(&Proxy::handleStreamOpen, this, connection, _1, _2);
+    connection->respondConnected();
+    boost::shared_ptr<ProxyShuffler> proxyShuffler(new ProxyShuffler(connection/*, stream*/));
+    proxyShuffler->shuffle();
+
   }
 }
 
@@ -60,7 +61,7 @@ void Proxy::handleStreamOpen(boost::shared_ptr<SocksStream> socks,
                              boost::shared_ptr<Packetizer> stream,
                              const boost::system::error_code &err)
 {
-  if (err) {
+  /*if (err) {
     std::cerr << "[proxy] " << "Error opening stream: " << err << std::endl;
     socks->respondConnectError();
     socks->close();
@@ -73,4 +74,4 @@ void Proxy::handleStreamOpen(boost::shared_ptr<SocksStream> socks,
   boost::shared_ptr<ProxyShuffler> proxyShuffler(new ProxyShuffler(socks, stream));
   //stream->run();
   proxyShuffler->shuffle();
-}
+*/}
