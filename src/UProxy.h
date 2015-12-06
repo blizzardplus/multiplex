@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 
+#include "Relay.h"
 #include "TunnelStream.h"
 #include "SocksStream.h"
 #include "Packetizer.h"
@@ -25,8 +26,11 @@
 using namespace boost::asio;
 
 class Proxy {
+private:
+	int id = 0;
  public:
   ip::tcp::acceptor acceptor;
+  io_service *io_srv;
   //Morpher  * _morpher;
   //SkypeClient * skypeclient;
 

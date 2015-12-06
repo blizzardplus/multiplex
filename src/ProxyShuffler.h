@@ -47,7 +47,7 @@ private:
 public:
 
  ProxyShuffler(boost::shared_ptr<TunnelStream> socks,
-               /*boost::shared_ptr<TunnelStream> relay,*/
+               boost::shared_ptr<TunnelStream> relay,
                boost::asio::io_service::work * wrk = 0);
 
  void shuffle();

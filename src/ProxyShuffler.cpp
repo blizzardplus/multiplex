@@ -7,9 +7,9 @@
 using namespace boost::asio;
 
 ProxyShuffler::ProxyShuffler(boost::shared_ptr<TunnelStream> socks,
-                             /*boost::shared_ptr<TunnelStream> relay, */
+                             boost::shared_ptr<TunnelStream> relay,
                              boost::asio::io_service::work * wrk)
-  : socks(socks)/*, relay(relay)*/, closed(false), work(wrk)
+  : socks(socks), relay(relay), closed(false), work(wrk)
 {}
 
 void ProxyShuffler::shuffle() {
@@ -18,9 +18,9 @@ void ProxyShuffler::shuffle() {
   socks->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(), 
                           socks, relay, socksReadBuffer, true,  _1, _2));
 
-/*  relay->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
+  relay->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
                           relay, socks, relayReadBuffer, false, _1, _2));
-                          */
+
 }
 
 void ProxyShuffler::readComplete(boost::shared_ptr<TunnelStream> thisStream,
@@ -48,11 +48,11 @@ void ProxyShuffler::readComplete(boost::shared_ptr<TunnelStream> thisStream,
 #endif
 
   Util::hexDump(thisBuffer,transferred);
-  /*thatStream->write(thisBuffer, transferred,
+  thatStream->write(thisBuffer, transferred,
                     boost::bind(&ProxyShuffler::writeComplete, shared_from_this(),
                                 thisStream, thatStream, thisBuffer, inSocks, 
                                 placeholders::error));
-                                */
+
 }
 
 void ProxyShuffler::writeComplete(boost::shared_ptr<TunnelStream> thisStream,

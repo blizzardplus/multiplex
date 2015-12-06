@@ -1,9 +1,11 @@
 #include "UProxy.h"
 
 using namespace boost::asio;
+using boost::asio::ip::tcp;
+
 
 Proxy::Proxy(/*UDPRelay *relay,*/ io_service &io_service, int listenPort/*, Morpher * morpher, SkypeClient * skc*/)
-  : acceptor(io_service, ip::tcp::endpoint(ip::tcp::v4(), listenPort))/*, relay(relay), _morpher(morpher), skypeclient(skc)*/
+  : acceptor(io_service, ip::tcp::endpoint(ip::tcp::v4(), listenPort)), io_srv (&io_service)/*, relay(relay), _morpher(morpher), skypeclient(skc)*/
 {
   acceptIncomingConnection();
 }
@@ -33,6 +35,11 @@ void Proxy::handleIncomingConnection(boost::shared_ptr<ip::tcp::socket> socket,
   acceptIncomingConnection();
 }
 
+void relayError(const boost::system::error_code &err) {
+	std::cerr << "[server] " << "Error with relay, exiting..." << std::endl;
+	exit(0);
+};
+
 void Proxy::handleSocksRequest(boost::shared_ptr<SocksStream> connection,
 				  std::string &host,
 				  uint16_t port,
@@ -50,9 +57,24 @@ void Proxy::handleSocksRequest(boost::shared_ptr<SocksStream> connection,
     std::cerr << "[proxy] " << "Skype server at " << host << ":" << port << std::endl; 
 
     //boost::bind(&Proxy::handleStreamOpen, this, connection, _1, _2);
-    connection->respondConnected();
-    boost::shared_ptr<ProxyShuffler> proxyShuffler(new ProxyShuffler(connection/*, stream*/));
-    proxyShuffler->shuffle();
+
+
+    boost::shared_ptr<Relay> relay(new Relay(*io_srv,
+            boost::bind(relayError,
+                    placeholders::error)));
+
+
+    try {
+        boost::shared_ptr<RelayStream> rstream(relay->openStream(host, port));
+
+
+        connection->respondConnected();
+        boost::shared_ptr<ProxyShuffler> proxyShuffler(new ProxyShuffler(connection, rstream));
+        proxyShuffler->shuffle();
+    }
+    catch (...) {
+        std::cerr << "[server] " << " unexpected error. exit now" << std::endl;
+    }
 
   }
 }
