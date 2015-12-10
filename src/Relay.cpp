@@ -91,7 +91,7 @@ boost::shared_ptr<TunnelStream> Relay::openStream(std::string &nextHost, uint16_
     else
     {
 
-        boost::shared_ptr<SocksStream> sockStream (new SocksStream(io_service, socket, endHost, endPort));
+        boost::shared_ptr<SocksStream> sockStream (new SocksStream(io_service, socket, endHost, endPort, endRelay));
         sockStream->sendConnect();
 
         return sockStream;

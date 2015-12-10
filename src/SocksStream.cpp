@@ -13,8 +13,8 @@ SocksStream::SocksStream(boost::asio::io_service &io_service, boost::shared_ptr<
   : ioService(io_service), socket(socket)
 {}
 
-SocksStream::SocksStream(boost::asio::io_service &io_service, boost::shared_ptr<ip::tcp::socket> socket, std::string nextHost, uint16_t nextPort)
-  : ioService(io_service), socket(socket), host(nextHost), port(nextPort)
+SocksStream::SocksStream(boost::asio::io_service &io_service, boost::shared_ptr<ip::tcp::socket> socket, std::string nextHost, uint16_t nextPort, bool end_socks)
+  : ioService(io_service), socket(socket), host(nextHost), port(nextPort), endSocks(end_socks)
 {}
 
 void SocksStream::getRequest(SocksRequestHandler handler) {
@@ -111,20 +111,27 @@ void SocksStream::readSocks4RequestComplete(SocksRequestHandler handler,
     std::cerr << "SOCKS4A request" << std::endl;
     //handler(host, port, boost::asio::error::access_denied);
 
-    boost::array<unsigned char, 4> hostBytes = {dstip[0], dstip[1], dstip[2], dstip[3]};
+//    boost::array<unsigned char, 4> hostBytes = {dstip[0], dstip[1], dstip[2], dstip[3]};
 
 
     boost::asio::streambuf::const_buffers_type bufs = b.data();
     std::size_t buf_size = b.size();
     std::string nextHost(boost::asio::buffers_begin(bufs), boost::asio::buffers_begin(bufs) + buf_size);
 
-
-    ip::tcp::resolver::query query(nextHost, "");
-    ip::tcp::resolver resolver(ioService);
-    ip::tcp::resolver::iterator dest = resolver.resolve(query);
+    if(endSocks != true)
+    {
+        ip::tcp::resolver::query query("google.com", "");
+        ip::tcp::resolver resolver(ioService);
+        ip::tcp::resolver::iterator dest = resolver.resolve(query);
+        host                                     = dest->host_name();
+    }
+    else
+    {
+        host                                     = nextHost;
+    }
 
     //host                                     = ip::address_v4(hostBytes).to_string();
-    host                                     = dest->host_name();
+
     port                                     = Util::bigEndianArrayToShort(dstport);
     handler(host, port, err);
   } 

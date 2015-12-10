@@ -95,6 +95,7 @@ class SocksStream : public TunnelStream, public boost::enable_shared_from_this<S
   ip::tcp::endpoint host_endpoint;
   uint16_t port;
   boost::asio::io_service &ioService;
+  bool endSocks;
   unsigned char data[MAX_RAW_MSG_LEN];
 
   void readVersionHeaderComplete(SocksRequestHandler handler, 
@@ -162,7 +163,7 @@ class SocksStream : public TunnelStream, public boost::enable_shared_from_this<S
 
  public:
   SocksStream(boost::asio::io_service &io_service, boost::shared_ptr<ip::tcp::socket> socket);
-  SocksStream(boost::asio::io_service &io_service, boost::shared_ptr<ip::tcp::socket> socket, std::string nextHost, uint16_t nextPort);
+  SocksStream(boost::asio::io_service &io_service, boost::shared_ptr<ip::tcp::socket> socket, std::string nextHost, uint16_t nextPort, bool end_socks);
 
   //Server
   void getRequest(SocksRequestHandler handler);
