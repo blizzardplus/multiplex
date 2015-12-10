@@ -45,9 +45,10 @@ void ProxyShuffler::readComplete(boost::shared_ptr<TunnelStream> thisStream,
   else {
     std::cerr << " <====== " << transferred << "\tbytes" << std::endl;
   }
-#endif
 
   Util::hexDump(thisBuffer,transferred);
+#endif
+
   thatStream->write(thisBuffer, transferred,
                     boost::bind(&ProxyShuffler::writeComplete, shared_from_this(),
                                 thisStream, thatStream, thisBuffer, inSocks, 
