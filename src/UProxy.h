@@ -31,6 +31,9 @@ private:
  public:
   ip::tcp::acceptor acceptor;
   io_service *io_srv;
+  bool endRelay;
+  std::string nextHost;
+  uint16_t nextPort;
   //Morpher  * _morpher;
   //SkypeClient * skypeclient;
 
@@ -50,7 +53,7 @@ private:
 
  public:
   Proxy(/*UDPRelay *relay, */ boost::asio::io_service &io_service,
-        int listenPort/*, Morpher * morpher, SkypeClient * skc*/);
+        int listenPort/*, Morpher * morpher, SkypeClient * skc*/, bool isEndRelay, const char* nextHost, uint16_t nextPort);
 
     
 };

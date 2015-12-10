@@ -34,7 +34,7 @@ class Relay {
   void close();
   void connect(RelayConnectHandler handler);
   void openStream(std::string &host, uint16_t port, RelayStreamHandler handler);
-  RelayStream * openStream(std::string &host, uint16_t port);
+  boost::shared_ptr<TunnelStream>  openStream(std::string &nextHost, uint16_t nextPort, bool endRelay, std::string &endHost, uint16_t endPort);
 
   void handleConnectionError(const boost::system::error_code &err);
 };

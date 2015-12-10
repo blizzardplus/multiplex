@@ -4,8 +4,10 @@ using namespace boost::asio;
 using boost::asio::ip::tcp;
 
 
-Proxy::Proxy(/*UDPRelay *relay,*/ io_service &io_service, int listenPort/*, Morpher * morpher, SkypeClient * skc*/)
+Proxy::Proxy(/*UDPRelay *relay,*/ io_service &io_service, int listenPort/*, Morpher * morpher, SkypeClient * skc*/
+        , bool isEndRelay, const char* next_host, uint16_t next_port)
   : acceptor(io_service, ip::tcp::endpoint(ip::tcp::v4(), listenPort)), io_srv (&io_service)/*, relay(relay), _morpher(morpher), skypeclient(skc)*/
+    , endRelay(isEndRelay), nextHost(next_host), nextPort(next_port)
 {
   acceptIncomingConnection();
 }
@@ -28,7 +30,7 @@ void Proxy::handleIncomingConnection(boost::shared_ptr<ip::tcp::socket> socket,
 
   std::cerr << "[proxy] " << "Got SOCKS Connection..." << std::endl;
 
-  boost::shared_ptr<SocksStream> connection(new SocksStream(socket));
+  boost::shared_ptr<SocksStream> connection(new SocksStream(*io_srv, socket));
   connection->getRequest(boost::bind(&Proxy::handleSocksRequest, this,
 				     connection, _1, _2, _3));
 
@@ -65,8 +67,21 @@ void Proxy::handleSocksRequest(boost::shared_ptr<SocksStream> connection,
 
 
     try {
-        boost::shared_ptr<RelayStream> rstream(relay->openStream(host, port));
 
+        std::string next_host;
+        uint16_t next_port;
+        if (endRelay == true)
+        {
+            next_host = host;
+            next_port = port;
+        }
+        else
+        {
+            next_host = nextHost;
+            next_port = nextPort;
+        }
+
+        boost::shared_ptr<TunnelStream> rstream(relay->openStream(next_host, next_port, endRelay, host, port));
 
         connection->respondConnected();
         boost::shared_ptr<ProxyShuffler> proxyShuffler(new ProxyShuffler(connection, rstream));

@@ -1,17 +1,22 @@
 #include "SocksStream.h"
 #include "Util.h"
 #include "debug.h"
-
+#include "socks4.cpp"
 #include <boost/bind.hpp>
+
 #include <cassert>
 #include <iostream>
 
 using namespace boost::asio;
 
-SocksStream::SocksStream(boost::shared_ptr<ip::tcp::socket> socket) 
-  : socket(socket)
+SocksStream::SocksStream(boost::asio::io_service &io_service, boost::shared_ptr<ip::tcp::socket> socket)
+  : ioService(io_service), socket(socket)
 {}
-				 
+
+SocksStream::SocksStream(boost::asio::io_service &io_service, boost::shared_ptr<ip::tcp::socket> socket, std::string nextHost, uint16_t nextPort)
+  : ioService(io_service), socket(socket), host(nextHost), port(nextPort)
+{}
+
 void SocksStream::getRequest(SocksRequestHandler handler) {
   boost::asio::async_read(*socket, buffer(data, VERSION_HEADER_LEN),
 			  boost::bind(&SocksStream::readVersionHeaderComplete,
@@ -61,6 +66,8 @@ void SocksStream::getSocks4ConnectionRequest(SocksRequestHandler handler) {
 			 handler, placeholders::error, placeholders::bytes_transferred));
 }
 
+
+using namespace boost::asio;
 void SocksStream::readSocks4RequestComplete(SocksRequestHandler handler,
 					  const boost::system::error_code &err,
 					  std::size_t transferred) 
@@ -102,7 +109,24 @@ void SocksStream::readSocks4RequestComplete(SocksRequestHandler handler,
 
   if (dstip[0] == 0x0 && dstip[1] == 0x0 && dstip[2] == 0x0 && dstip[3] != 0x0) {
     std::cerr << "SOCKS4A request" << std::endl;
-    handler(host, port, boost::asio::error::access_denied);
+    //handler(host, port, boost::asio::error::access_denied);
+
+    boost::array<unsigned char, 4> hostBytes = {dstip[0], dstip[1], dstip[2], dstip[3]};
+
+
+    boost::asio::streambuf::const_buffers_type bufs = b.data();
+    std::size_t buf_size = b.size();
+    std::string nextHost(boost::asio::buffers_begin(bufs), boost::asio::buffers_begin(bufs) + buf_size);
+
+
+    ip::tcp::resolver::query query(nextHost, "");
+    ip::tcp::resolver resolver(ioService);
+    ip::tcp::resolver::iterator dest = resolver.resolve(query);
+
+    //host                                     = ip::address_v4(hostBytes).to_string();
+    host                                     = dest->host_name();
+    port                                     = Util::bigEndianArrayToShort(dstport);
+    handler(host, port, err);
   } 
   else {
     std::cerr << "SOCKS4 request" << std::endl;
@@ -174,7 +198,7 @@ void SocksStream::sendSocks5ValidMethodResponse(SocksRequestHandler handler) {
 
 void SocksStream::socks5MethodResponseComplete(SocksRequestHandler handler, 
 					     const boost::system::error_code &err,
-					     std::size_t transferred) 
+					     std::size_t transferred)
 {
   if (err) handler(host, port, err);
   else     getSocks5ConnectionRequest(handler);
@@ -427,3 +451,60 @@ void SocksStream::respondConnectError() {
   }
 }
 
+void SocksStream::sendConnect() {
+
+    std::vector<boost::asio::const_buffer> buffers;
+    boost::asio::const_buffer b1= boost::asio::buffer(host);
+
+    Util::int16ToArrayBigEndian(dstport, port);
+
+    data[0] = 0x4;
+    data[1] = 0x1;
+
+    //Fill out port
+    data[2] = dstport[0];
+    data[3] = dstport[1];
+
+
+    //Fill out IP
+    data[4] = 0x0;
+    data[5] = 0x0;
+    data[6] = 0x0;
+    data[7] = 0x1;
+
+    buffers.push_back(buffer(data,8));
+    buffers.push_back(b1);
+
+    boost::array<char, 2> a = { 0x0, 0x0};
+
+    buffers.push_back(buffer(a,2));
+
+    boost::asio::write(*socket, buffers);
+/*
+    // Receive a response from the SOCKS 4 server.
+    boost::array<char, MAX_RAW_MSG_LEN> response;
+    boost::asio::read(*socket,  boost::asio::buffer(response));*/
+
+    socks4::reply socks_reply;
+    boost::asio::read(*socket, socks_reply.buffers());
+
+
+    //success
+    if (socks_reply.success())
+    {
+        std::cout << "Successfully connected" << std::endl;
+    }
+    else
+    {
+        std::cerr << "Failed to connect to server!!" << std::endl;
+    }
+
+
+    /*async_write(*socket, buffer(data, 10),
+            boost::bind(&SocksStream::respondConnectErrorComplete,
+                    shared_from_this(), placeholders::error));
+                    */
+}
+
+void SocksStream::sendRequest() {
+}
