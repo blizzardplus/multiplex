@@ -25,8 +25,10 @@
 class ProxyShuffler : public boost::enable_shared_from_this<ProxyShuffler> {
 
 private:
-  boost::shared_ptr<TunnelStream> socks;
-  boost::shared_ptr<TunnelStream> relay;
+
+	nodeType relayType;
+  std::vector <boost::shared_ptr<TunnelStream> > socksList;
+  std::vector <boost::shared_ptr<TunnelStream> > relayList;
 
   unsigned char socksReadBuffer[PROXY_BUF_SIZE];
   unsigned char relayReadBuffer[PROXY_BUF_SIZE];
@@ -46,9 +48,16 @@ private:
 
 public:
 
- ProxyShuffler(boost::shared_ptr<TunnelStream> socks,
-               boost::shared_ptr<TunnelStream> relay, 
+	uint16_t relayCount, socksCount;
+	int socks_pck_cnt, relay_pck_cnt;
+
+ ProxyShuffler(std::vector <boost::shared_ptr<TunnelStream> > socks,
+               std::vector <boost::shared_ptr<TunnelStream> > relay,
+			   nodeType relay_type,
                boost::asio::io_service::work * wrk = 0);
+
+ void addNewSocks(boost::shared_ptr<TunnelStream> socks,
+         boost::asio::io_service::work * wrk = 0);
 
  void shuffle();
 

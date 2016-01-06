@@ -309,16 +309,22 @@ std::string Util::charToHexString(const unsigned char* buffer, size_t size) {
 }
 
 
-/*
+
 uint16_t Util::getRandomId() {
+  /*
   unsigned char id[2];
   RNG rng;
   InitRng(&rng); 
-  RNG_GenerateBlock(&rng, id, sizeof(id)); 
+  RNG_GenerateBlock(&rng, id, sizeof(id));
   
   return bigEndianArrayToShort(id);
-}
+   */
+	srand (time(NULL));
+	return  rand() % 10000;
 
+	//TODO: Fix this to use crypto rand
+}
+/*
 uint32_t Util::getRandom() {
   unsigned char bytes[4];
   RNG rng;
