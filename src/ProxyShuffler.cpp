@@ -4,18 +4,18 @@
 #include "Dispatcher.h"
 #include "Mutex.h"
 #include "Linked_list.h"
-#include "Thread_pool.h"
 #include "Aggregator.h"
 
 
 #include <boost/enable_shared_from_this.hpp>
 
+#define MSS 1460 //maximum segment size
+
 using namespace boost::asio;
 
-Linked_list *linked_list = new Linked_list();  // need to be changed!! do not use globals
-//Mutex *buf_mutex_ptr = new Mutex();
+Linked_list *linked_list = new Linked_list();
 
-Mutex buf_mutex; //= *buf_mutex_ptr;
+Mutex buf_mutex;
 
 
 ProxyShuffler::ProxyShuffler(std::vector <boost::shared_ptr<TunnelStream> > socks,
@@ -23,84 +23,25 @@ ProxyShuffler::ProxyShuffler(std::vector <boost::shared_ptr<TunnelStream> > sock
 							 nodeType relay_type,
                              boost::asio::io_service::work * wrk)
   : socksList(socks), relayList(relay), closed(false), work(wrk), socksCount(0), relayCount(0),
-    relay_pck_cnt(1), socks_pck_cnt(1), relayType(relay_type)
+    relay_pck_cnt(1), socks_pck_cnt(1), relayType(relay_type), remaining_bytes(0)
 {
-	  /*Thread_pool tp(4);
-	  int ret = tp.initialize_threadpool();
-	  if (ret == -1) {
-	    cerr << "Failed to initialize thread pool!" << endl;
-	  } */
+
+
+	 remaining_bytes_buf = (unsigned char*) malloc (5) ;
+
 		linked_list->head=NULL;
-		linked_list->head_pck=1;  // could be added to the constructor
+		linked_list->head_pck=1;
 }
 
-
-/*
-void process(void* arg)
-{
-	unsigned char* in_buf = (unsigned char*) arg;
-	unsigned int buf_len;
-	unsigned int pck_num;
-	unsigned char* buf;
-
-	Aggregator::removeHeader(in_buf, &buf_len, &pck_num);
-
-	buf = (unsigned char *) malloc (buf_len);
-	Aggregator::appendPayload(in_buf, buf, &buf_len);
-
-
-	buf_mutex.lock();
-
-	//std::cout << "REMOVING HEADERS" << buf_len <<  pck_num  << std::endl;
-	//std::cout << buf[0] <<  buf[1]  << std::endl;
-
-	linked_list->insertNode(buf,buf_len,pck_num);
-
-
-	//std::cout <<  linked_list->head_pck << std::endl;
-
-
-	std::cout <<  linked_list->head->pck_num << std::endl;
-	if (linked_list->head->next!=NULL)
-	{
-		std::cout <<  linked_list->head->next->pck_num << std::endl;
-		if (linked_list->head->next->next!=NULL)
-		{
-			std::cout <<  linked_list->head->next->next->pck_num << std::endl;
-		}
-	}
-
-
-	buf_mutex.unlock();
-
-
-}
-*/
 
 
 void ProxyShuffler::shuffle() {
   std::cerr << "proxy relaying..." << std::endl;
 
 
- // int k = pck_cnt % relayCount;
-
-  //addHeader(socksReadBuffer, socksReadBuffer_with_header)
-
- /*
-  (socksList[0])->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
-		  (socksList[0]), (relayList)[k], socksReadBuffer, true,  _1, _2));
-
-
-
-  for (int i=0 ; i< relayCount; i++)
-  {
-	  (relayList[i])->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
-	                          (relayList[i]), (socksList[0]), relayReadBuffer, false, _1, _2));
-  }
-*/
-
   if (relayType==firstHop) // 1 input multiple outputs
   {
+	  remaining_bytes = 0;
 
 	  int next_rel = socks_pck_cnt % relayCount;
 	  (socksList[0])->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
@@ -109,7 +50,7 @@ void ProxyShuffler::shuffle() {
 	  for (int i=0 ; i< relayCount; i++)
 	  {
 		  (relayList[i])->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
-		                          (relayList[i]), (socksList[0]), relayReadBuffer, false, _1, _2));  // ADD socksREADBUFFER ro linked send whats needed
+		                          (relayList[i]), (socksList[0]), relayReadBuffer, false, _1, _2));  // ADD relayReadBuffer to linked send what's needed
 	  }
   }
   else if (relayType==lastHop)  // multiple inputs 1 output
@@ -117,8 +58,10 @@ void ProxyShuffler::shuffle() {
 	  for (int i=0 ; i< socksCount; i++)
 	  {
 		  (socksList[i])->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
-		                          (socksList[i]), (relayList[0]), socksReadBuffer, true, _1, _2));  // ADD socksREADBUFFER ro linked send whats needed
+		                          (socksList[i]), (relayList[0]), socksReadBuffer, true, _1, _2));  // ADD socksREADBUFFER to linked send what's needed
 	  }
+
+	  remaining_bytes = 0;
 
 	  int next_socks = relay_pck_cnt % socksCount;
 
@@ -134,7 +77,6 @@ void ProxyShuffler::shuffle() {
 	  		                          (relayList[0]), (socksList[0]), relayReadBuffer, false, _1, _2));
   }
 
-
 }
 
 void ProxyShuffler::addNewSocks(boost::shared_ptr<TunnelStream> socks,
@@ -142,7 +84,7 @@ void ProxyShuffler::addNewSocks(boost::shared_ptr<TunnelStream> socks,
 {
 	socksList.push_back(socks);
 	socksList[socksCount]->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
-	                                  (socksList[socksCount]), (relayList[0]), socksReadBuffer, true, _1, _2));  // ADD socksREADBUFFER ro linked send whats needed
+	                                  (socksList[socksCount]), (relayList[0]), socksReadBuffer, true, _1, _2));
 	socksCount++;
 }
 
@@ -163,9 +105,7 @@ void ProxyShuffler::readComplete(boost::shared_ptr<TunnelStream> thisStream,
   }
 
   assert(transferred <= PROXY_BUF_SIZE);
-  memcpy(thisBuffer, buf, transferred);  // instead of this BUFFER copy to the linked list
-  //Decide whether you have data to write to the other side
-
+  memcpy(thisBuffer, buf, transferred);
 
 
 #ifdef DEBUG_SHUFFLER
@@ -180,28 +120,94 @@ void ProxyShuffler::readComplete(boost::shared_ptr<TunnelStream> thisStream,
 
 
 
-
   if ((relayType==firstHop && inSocks==true) || (relayType==lastHop && inSocks==false)) // ADD HEADER TO BUFFER BEFORE SENDING
   {
 	  int transferred_with_h = transferred + 8;
-	  unsigned char *mod_buf = (unsigned char*) malloc (transferred_with_h);
 
 
-	  if(inSocks == true)
-	      Dispatcher::add_header(thisBuffer, transferred, socks_pck_cnt++ , mod_buf);
+	  int transferred_with_previous = transferred_with_h + remaining_bytes;
+
+
+	  unsigned char *mod_buf;
+
+	  int new_remaining_bytes;
+
+	  if (transferred_with_previous>MSS)
+	  {
+		  mod_buf = (unsigned char*) malloc (MSS-8);
+		  new_remaining_bytes = transferred_with_previous - MSS;
+		  if (remaining_bytes>0)
+		  {
+			  memcpy(mod_buf, remaining_bytes_buf, remaining_bytes);
+			  free(remaining_bytes_buf);
+		  }
+		  memcpy(mod_buf + remaining_bytes, thisBuffer, MSS - remaining_bytes - 8);
+	  }
 	  else
-	      Dispatcher::add_header(thisBuffer, transferred, relay_pck_cnt++ , mod_buf);
+	  {
+		  mod_buf = (unsigned char*) malloc (transferred_with_previous-8);
+		  new_remaining_bytes = 0;
+		  if (remaining_bytes>0)
+		  {
+			  memcpy(mod_buf, remaining_bytes_buf, remaining_bytes);
+			  free(remaining_bytes_buf);
+		  }
+		  memcpy(mod_buf + remaining_bytes, thisBuffer, transferred);
+	  }
 
-	  thatStream->write(mod_buf, transferred_with_h,
-	                    boost::bind(&ProxyShuffler::writeComplete, shared_from_this(),
-	                                thisStream, thatStream, mod_buf, inSocks,
-	                                boost::asio::placeholders::error));
+	  if (new_remaining_bytes>0)
+	  {
+		  remaining_bytes_buf = (unsigned char*) realloc (remaining_bytes_buf,new_remaining_bytes);
+		  memcpy(remaining_bytes_buf, thisBuffer + MSS - remaining_bytes - 8, new_remaining_bytes);
+	  }
+
+	  remaining_bytes = new_remaining_bytes;
+
+
+
+
+	  if (transferred_with_previous>MSS)
+	  {
+		  unsigned char *new_mod_buf = (unsigned char*) malloc (MSS);
+
+		  if(inSocks == true)
+		  {
+			  Dispatcher::add_header(mod_buf, MSS-8, socks_pck_cnt++ , new_mod_buf);
+		  }
+		  else
+		  {
+			  Dispatcher::add_header(mod_buf, MSS-8, relay_pck_cnt++ , new_mod_buf);
+		  }
+
+		  thatStream->write(new_mod_buf, MSS,
+		                    boost::bind(&ProxyShuffler::writeComplete, shared_from_this(),
+		                                thisStream, thatStream, new_mod_buf, inSocks,
+		                                boost::asio::placeholders::error));
+	  }
+	  else
+	  {
+		  unsigned char *new_mod_buf = (unsigned char*) malloc (transferred_with_previous);
+
+		  if(inSocks == true)
+		  {
+			  Dispatcher::add_header(mod_buf, transferred_with_previous-8, socks_pck_cnt++ , new_mod_buf);
+		  }
+		  else
+		  {
+			  Dispatcher::add_header(mod_buf, transferred_with_previous-8, relay_pck_cnt++ , new_mod_buf);
+		  }
+
+
+		  thatStream->write(new_mod_buf, transferred_with_previous,
+		                    boost::bind(&ProxyShuffler::writeComplete, shared_from_this(),
+		                                thisStream, thatStream, new_mod_buf, inSocks,
+		                                boost::asio::placeholders::error));
+	  }
+
+
   }
-  else if ((relayType==firstHop && inSocks==false) || (relayType==lastHop && inSocks==true))  // multiple inputs 1 output
+  else if ((relayType==firstHop && inSocks==false) || (relayType==lastHop && inSocks==true))  // add to linked list
   {
-	  //Task* t1 = new Task(&process, (void*) thisBuffer);
-	  //tp.add_task(t1);
-
 
 		unsigned int buf_len;
 		unsigned int pck_num;
@@ -217,6 +223,7 @@ void ProxyShuffler::readComplete(boost::shared_ptr<TunnelStream> thisStream,
 
 
 		linked_list->insertNode(buf,buf_len,pck_num);
+
 
 		while (linked_list->check_head())
 		{
@@ -238,18 +245,16 @@ void ProxyShuffler::readComplete(boost::shared_ptr<TunnelStream> thisStream,
   }
   else if (relayType == middleHop) //1 input 1 output
   {
+
+	  std::cout << std::endl;
+      std::cout << " ======> relaying " << transferred  <<" bytes " << std::endl;
+
 	  thatStream->write(thisBuffer, transferred,
 	                    boost::bind(&ProxyShuffler::writeComplete, shared_from_this(),
 	                                thisStream, thatStream, thisBuffer, inSocks,
 	                                boost::asio::placeholders::error));
   }
 
-  /*
-  thatStream->write(thisBuffer, transferred,
-                    boost::bind(&ProxyShuffler::writeComplete, shared_from_this(),
-                                thisStream, thatStream, thisBuffer, inSocks, 
-                                placeholders::error));
-                                */
 
 }
 
@@ -266,8 +271,25 @@ void ProxyShuffler::writeComplete(boost::shared_ptr<TunnelStream> thisStream,
     return;
   }
 
-  thisStream->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
-                               thisStream, thatStream, buf, inSocks, _1, _2));
+  if (relayType==firstHop && inSocks==true)   //send next packet to another relay
+  {
+	  int next_rel = socks_pck_cnt % relayCount;
+	  thisStream->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
+			  	  	  	  	  	   thisStream, (relayList[next_rel]), buf, inSocks, _1, _2));
+  }
+  else if (relayType==lastHop && inSocks==false)	//send next packet to another socks (if available)
+  {
+	  int next_socks = (relay_pck_cnt+1) % socksCount;
+	  thisStream->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
+			  	  	  	  	  	   thisStream, (socksList[next_socks]), buf, inSocks, _1, _2));
+
+  }
+  else
+  {
+	  thisStream->read(boost::bind(&ProxyShuffler::readComplete, shared_from_this(),
+	                               thisStream, thatStream, buf, inSocks, _1, _2));
+  }
+
 }
 
 void ProxyShuffler::close(bool force) {

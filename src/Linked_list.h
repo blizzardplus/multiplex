@@ -9,11 +9,9 @@ class Linked_list {
 	  int pck_num;
 	  struct node *next;
 	};
-	//struct node *head = NULL;
 
 public:
 	struct node *head;
-	//int head_pck=0;
 	int head_pck;
 
 

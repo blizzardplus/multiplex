@@ -93,6 +93,7 @@ void Proxy::handleSocksRequest(boost::shared_ptr<SocksStream> connection,
                   next_host = (*nextHostList)[i];
                   next_port = (*nextPortList)[i];
                   boost::shared_ptr<TunnelStream> rstream(relay->openStream(next_host, next_port, relayType, endHost, endPort, &error));
+
                   if (!error)
                   {
                       rstreamList.push_back(rstream);
@@ -104,6 +105,7 @@ void Proxy::handleSocksRequest(boost::shared_ptr<SocksStream> connection,
 
           if(relayType != lastHop || liveShuffler == NULL)
           {
+
               std::vector <boost::shared_ptr<TunnelStream> > connectionList ;
               connectionList.push_back(connection);
               boost::shared_ptr<ProxyShuffler> proxyShuffler(new ProxyShuffler(connectionList, rstreamList, relayType));
@@ -118,6 +120,7 @@ void Proxy::handleSocksRequest(boost::shared_ptr<SocksStream> connection,
               (liveShuffler)->addNewSocks(connection);
               //(liveShuffler)->shuffle();
           }
+
       }
       catch (...) {
           std::cerr << "[server] " << " unexpected error. exit now" << std::endl;

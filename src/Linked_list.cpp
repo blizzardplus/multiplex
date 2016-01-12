@@ -37,13 +37,6 @@ void Linked_list::insertNode(unsigned char* buf, int buf_len,int pck_num)
 		  tmp->next = new_node;
 	  }
 
-	  /*
-		std::cout <<  head->pck_num << std::endl;
-		if (head->next!=NULL)
-		{
-			std::cout <<  head->next->pck_num << std::endl;
-		}
-		*/
 }
 
 
@@ -75,7 +68,6 @@ int Linked_list::check_head()
 	if (head!=NULL)
 	{
 		i = head->pck_num;
-		//std::cout << "Compare these two: " << i << "  " << head_pck << std::endl;
 		if (i==head_pck)
 		{
 			return 1;

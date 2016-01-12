@@ -8,7 +8,6 @@
 #include <errno.h>
 #include <string.h>
 
-//#include "Global.h"
 
 using namespace std;
 

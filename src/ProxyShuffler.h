@@ -51,6 +51,9 @@ public:
 	uint16_t relayCount, socksCount;
 	int socks_pck_cnt, relay_pck_cnt;
 
+	unsigned char* remaining_bytes_buf;
+	int remaining_bytes;
+
  ProxyShuffler(std::vector <boost::shared_ptr<TunnelStream> > socks,
                std::vector <boost::shared_ptr<TunnelStream> > relay,
 			   nodeType relay_type,
