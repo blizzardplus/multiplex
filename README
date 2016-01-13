@@ -23,7 +23,7 @@ On Ubuntu use the following command to install Boot library:
 
 sudo apt-get install libboost-all-dev
 
-The source code should be linked with -lboost_system. A sample Makefile is included in the Debug folder which will be replace with a cofig file.
+The source code should be linked with -lboost_system. A sample Makefile is included in the "src" folder which will be replace with a cofig file.
 
 1.3 How to run and test
 
